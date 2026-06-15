@@ -30,33 +30,31 @@ class RoomGroupChatNameDataAccessor(
     }
 
     override fun persistRelationship(chatId: String, chatGroupName: String) {
+        blockingGet(Callable {
+            persistRelationshipOnIo(chatId, chatGroupName)
+            null
+        })
         synchronized(chatIdToGroupNameMap) {
             chatIdToGroupNameMap[chatId] = chatGroupName
         }
-        ioExecutor.execute { persistRelationshipOnIo(chatId, chatGroupName) }
     }
 
     private fun persistRelationshipOnIo(chatId: String, chatGroupName: String) {
-        try {
-            var entry: GroupChatNameEntry? = groupChatNameDao.getEntry(chatId)
-            if (entry == null) {
-                entry = GroupChatNameEntry()
-                entry.chatId = chatId
-                entry.chatGroupName = chatGroupName
-                entry.createdAtTimestamp = Instant.now().toEpochMilli()
-                entry.updatedAtTimestamp = Instant.now().toEpochMilli()
-            } else if (entry.chatGroupName == chatGroupName) {
-                return
-            } else {
-                entry.chatGroupName = chatGroupName
-                entry.updatedAtTimestamp = Instant.now().toEpochMilli()
-            }
-            groupChatNameDao.insert(entry)
-            Timber.i("Persisted entry with chat ID [%s] chat group name [%s] ", chatId, chatGroupName)
-        } catch (e: Exception) {
-            Timber.e(e, "Error recording entry chat ID [%s] chat group name [%s]: %s",
-                chatId, chatGroupName, e.message)
+        var entry: GroupChatNameEntry? = groupChatNameDao.getEntry(chatId)
+        if (entry == null) {
+            entry = GroupChatNameEntry()
+            entry.chatId = chatId
+            entry.chatGroupName = chatGroupName
+            entry.createdAtTimestamp = Instant.now().toEpochMilli()
+            entry.updatedAtTimestamp = Instant.now().toEpochMilli()
+        } else if (entry.chatGroupName == chatGroupName) {
+            return
+        } else {
+            entry.chatGroupName = chatGroupName
+            entry.updatedAtTimestamp = Instant.now().toEpochMilli()
         }
+        groupChatNameDao.insert(entry)
+        Timber.i("Persisted entry with chat ID [%s] chat group name [%s] ", chatId, chatGroupName)
     }
 
     override fun getChatGroupName(chatId: String): Optional<String> {

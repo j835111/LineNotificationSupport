@@ -36,8 +36,7 @@ class RoomChatKeywordDao private constructor(
 
     override fun createOrUpdateKeyword(chatId: String, keyword: String) {
         val normalizedKeyword = keyword ?: ""
-        chatIdToKeywordMap[chatId] = normalizedKeyword
-        ioExecutor.execute {
+        blockingGet(Callable {
             keywordDao.insert(
                 KeywordEntry.builder()
                     .chatId(chatId)
@@ -47,7 +46,9 @@ class RoomChatKeywordDao private constructor(
                     .updatedAtTimestamp(Instant.now().toEpochMilli())
                     .build()
             )
-        }
+            null
+        })
+        chatIdToKeywordMap[chatId] = normalizedKeyword
     }
 
     override fun getKeywords(): Set<String> = LinkedHashSet(chatIdToKeywordMap.values)

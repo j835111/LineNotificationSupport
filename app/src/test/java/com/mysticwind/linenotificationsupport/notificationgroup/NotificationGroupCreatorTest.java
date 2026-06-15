@@ -3,7 +3,7 @@ package com.mysticwind.linenotificationsupport.notificationgroup;
 import static com.mysticwind.linenotificationsupport.notificationgroup.NotificationGroupCreator.CALL_NOTIFICATION_GROUP_ID;
 import static com.mysticwind.linenotificationsupport.notificationgroup.NotificationGroupCreator.MESSAGE_NOTIFICATION_GROUP_ID;
 import static com.mysticwind.linenotificationsupport.notificationgroup.NotificationGroupCreator.OTHERS_NOTIFICATION_GROUP_ID;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,7 +27,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.List;

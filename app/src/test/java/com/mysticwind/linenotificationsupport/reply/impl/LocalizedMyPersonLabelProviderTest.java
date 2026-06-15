@@ -1,6 +1,12 @@
 package com.mysticwind.linenotificationsupport.reply.impl;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import android.content.Context;
+
+import com.mysticwind.linenotificationsupport.ui.LocaleDao;
 
 import org.junit.Test;
 
@@ -28,7 +34,9 @@ public class LocalizedMyPersonLabelProviderTest {
     }
 
     private LocalizedMyPersonLabelProvider buildWithLocale(String locale) {
-        return new LocalizedMyPersonLabelProvider(locale);
+        LocaleDao localeDao = mock(LocaleDao.class);
+        when(localeDao.getLocale()).thenReturn(locale);
+        return new LocalizedMyPersonLabelProvider(localeDao, mock(Context.class));
     }
 
 }

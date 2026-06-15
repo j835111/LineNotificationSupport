@@ -42,6 +42,7 @@ External policy/tooling evidence checked on 2026-06-14:
 Target result: produce an updateable Play release targeting API 35 without coupling that policy work to a full AGP 9.x modernization.
 
 1. **Baseline and environment lock**
+   - Normalize `gradlew` to LF line endings so Unix shell execution reaches JVM startup.
    - Install/standardize JDK for local and CI verification.
    - Capture current outputs for:
      - `./gradlew --version`
@@ -49,7 +50,7 @@ Target result: produce an updateable Play release targeting API 35 without coupl
      - `./gradlew :app:assembleRelease :app:lintRelease`
    - Record current dependency graph:
      - `./gradlew :app:dependencies --configuration releaseRuntimeClasspath`
-   - Stop condition: current branch has a known green/broken baseline before any upgrade edits.
+   - Stop condition: current branch has a known green/broken baseline before any upgrade edits, and the baseline commands fail only for real build issues rather than shell/JDK bootstrapping problems.
 
 2. **Target SDK compliance slice**
    - Raise `compileSdk` and `targetSdk` from 33 to 35.
@@ -224,5 +225,5 @@ Proceed with Track A first: target API 35 with minimal behavior change and stric
   - `019ec4be-a45a-7521-833d-92400cb9ed15` / test and release verification matrix.
 - PASS: Official Play target API and AGP 9.2 compatibility facts were checked on 2026-06-14.
 - PASS: `java -version` was attempted and failed with `java: command not found`; this is captured as an environment prerequisite.
-- PASS: `./gradlew --version` was attempted and failed because `JAVA_HOME` is not set and no `java` command is on `PATH`; this is captured as an environment prerequisite.
+- PASS: `./gradlew --version` was attempted and failed before JVM startup because `gradlew` currently has CRLF line endings on a Unix shell (`/usr/bin/env: 'sh\\r': No such file or directory`); JDK availability remains a separate prerequisite after that wrapper issue is corrected.
 - NOT RUN: Typecheck/build/test/lint are not applicable as proof of a read-only Markdown planning artifact in this environment and cannot start until Java/JDK is available.

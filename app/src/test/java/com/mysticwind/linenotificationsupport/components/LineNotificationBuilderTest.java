@@ -24,13 +24,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class LineNotificationBuilderTest {
 
     private GroupChatNameDataAccessor groupChatNameDataAccessor = new CachingGroupChatNameDataAccessorDecorator(
@@ -65,6 +65,11 @@ public class LineNotificationBuilderTest {
                 @Override
                 public Multimap<String, String> getAllChatIdToSenders() {
                     return chatIdToSenderMultimap;
+                }
+
+                @Override
+                public void deleteAllEntries() {
+                    chatIdToSenderMultimap.clear();
                 }
             });
 

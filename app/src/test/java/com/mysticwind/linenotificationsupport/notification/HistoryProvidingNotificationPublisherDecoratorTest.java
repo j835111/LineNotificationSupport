@@ -3,12 +3,13 @@ package com.mysticwind.linenotificationsupport.notification;
 import com.google.common.collect.ImmutableList;
 import com.mysticwind.linenotificationsupport.model.LineNotification;
 import com.mysticwind.linenotificationsupport.model.NotificationHistoryEntry;
+import com.mysticwind.linenotificationsupport.preference.PreferenceProvider;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 
@@ -30,12 +31,14 @@ public class HistoryProvidingNotificationPublisherDecoratorTest {
 
     @Mock
     private NotificationPublisher notificationPublisher;
+    @Mock
+    private PreferenceProvider preferenceProvider;
 
     private HistoryProvidingNotificationPublisherDecorator classUnderTest;
 
     @Before
     public void setUp() throws Exception {
-        classUnderTest = new HistoryProvidingNotificationPublisherDecorator(notificationPublisher);
+        classUnderTest = new HistoryProvidingNotificationPublisherDecorator(notificationPublisher, preferenceProvider);
     }
 
     @Test

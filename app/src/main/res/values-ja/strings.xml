@@ -4,8 +4,12 @@
     <string name="action_settings">設定</string>
     <string name="action_debug">デバッグ</string>
     <string name="action_test_notifications">通知をテストする</string>
+    <string name="first_fragment_label">最初のフラグメント</string>
+    <string name="second_fragment_label">2番目のフラグメント</string>
     <string name="next">次</string>
     <string name="previous">前</string>
+    <string name="hello_first_fragment">最初のフラグメントです</string>
+    <string name="hello_second_fragment">2番目のフラグメントです。引数: %1$s</string>
     <string name="title_activity_settings">設定</string>
     <string name="dismiss_button_text">無視</string>
     <string name="link_button_text">ウェブサイト</string>

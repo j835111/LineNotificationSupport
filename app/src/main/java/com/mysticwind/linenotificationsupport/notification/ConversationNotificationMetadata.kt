@@ -10,8 +10,6 @@ import com.mysticwind.linenotificationsupport.line.LineLauncher
 import com.mysticwind.linenotificationsupport.model.LineNotification
 import com.mysticwind.linenotificationsupport.model.LineNotificationBuilder
 import timber.log.Timber
-import java.nio.charset.StandardCharsets
-import java.util.UUID
 
 object ConversationNotificationMetadata {
 
@@ -62,17 +60,8 @@ object ConversationNotificationMetadata {
             return LINE_SHORTCUT_PREFIX + chatId
         }
 
-        val title = lineNotification.title?.trim().orEmpty()
-        val sender = lineNotification.sender?.name?.toString()?.trim().orEmpty()
-        val fallbackSeed = listOf(title, sender)
-            .filter { it.isNotBlank() }
-            .joinToString("|")
-        if (fallbackSeed.isBlank()) {
-            return null
-        }
-
-        val fallbackId = UUID.nameUUIDFromBytes(fallbackSeed.toByteArray(StandardCharsets.UTF_8))
-        return LINE_FALLBACK_SHORTCUT_PREFIX + fallbackId
+        val fallbackSeed = buildFallbackIdSeed(lineNotification) ?: return null
+        return LINE_FALLBACK_SHORTCUT_PREFIX + seedToUUID(fallbackSeed)
     }
 
     @JvmStatic

@@ -5,12 +5,10 @@ import com.mysticwind.linenotificationsupport.model.LineNotification
 
 object IncomingCallNotificationRepeatPlanner {
 
-    data class Decision(
-        val shouldCancel: Boolean,
-        val notificationIdsToCancel: Set<Int>,
-        val notificationToPublish: LineNotification?,
-        val notificationId: Int?
-    )
+    sealed class Decision {
+        data class Cancel(val notificationIdsToCancel: Set<Int>) : Decision()
+        data class Repeat(val notificationToPublish: LineNotification, val notificationId: Int) : Decision()
+    }
 
     @JvmStatic
     fun planNextRepeat(
@@ -20,12 +18,7 @@ object IncomingCallNotificationRepeatPlanner {
         nowTimestampMillis: Long
     ): Decision {
         if (!autoIncomingCallNotificationState.shouldNotify()) {
-            return Decision(
-                shouldCancel = true,
-                notificationIdsToCancel = autoIncomingCallNotificationState.getIncomingCallNotificationIds(),
-                notificationToPublish = null,
-                notificationId = null
-            )
+            return Decision.Cancel(autoIncomingCallNotificationState.getIncomingCallNotificationIds())
         }
 
         val lineNotificationWithUpdatedTimestamp = autoIncomingCallNotificationState.lineNotification.toBuilder()
@@ -33,16 +26,11 @@ object IncomingCallNotificationRepeatPlanner {
             .build()
 
         val notificationId = if (shouldCreateNewContinuousCallNotifications) {
-            nextNotificationId().also(autoIncomingCallNotificationState::notified)
+            nextNotificationId()
         } else {
             autoIncomingCallNotificationState.getIncomingCallNotificationIds().iterator().next()
         }
 
-        return Decision(
-            shouldCancel = false,
-            notificationIdsToCancel = emptySet(),
-            notificationToPublish = lineNotificationWithUpdatedTimestamp,
-            notificationId = notificationId
-        )
+        return Decision.Repeat(lineNotificationWithUpdatedTimestamp, notificationId)
     }
 }

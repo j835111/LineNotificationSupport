@@ -296,7 +296,9 @@ class NotificationListenerService : android.service.notification.NotificationLis
         )
         this.autoIncomingCallNotificationState = callStateUpdate.nextState
         if (callStateUpdate.shouldSendImmediateRepeat) {
-            sendIncomingCallNotification(this.autoIncomingCallNotificationState!!)
+            sendIncomingCallNotification(requireNotNull(callStateUpdate.nextState) {
+                "shouldSendImmediateRepeat is true but nextState is null"
+            })
         }
     }
 
@@ -366,25 +368,32 @@ class NotificationListenerService : android.service.notification.NotificationLis
     }
 
     private fun sendIncomingCallNotification(autoIncomingCallNotificationState: AutoIncomingCallNotificationState) {
+        val shouldCreateNew = preferenceProvider.shouldCreateNewContinuousCallNotifications()
         val repeatDecision = IncomingCallNotificationRepeatPlanner.planNextRepeat(
             autoIncomingCallNotificationState,
-            preferenceProvider.shouldCreateNewContinuousCallNotifications(),
+            shouldCreateNew,
             notificationIdGenerator::getNextNotificationId,
             Instant.now().toEpochMilli()
         )
-        if (repeatDecision.shouldCancel) {
-            cancelIncomingCallNotification(repeatDecision.notificationIdsToCancel)
-            return
+        when (repeatDecision) {
+            is IncomingCallNotificationRepeatPlanner.Decision.Cancel -> {
+                cancelIncomingCallNotification(repeatDecision.notificationIdsToCancel)
+                return
+            }
+            is IncomingCallNotificationRepeatPlanner.Decision.Repeat -> {
+                if (shouldCreateNew) {
+                    autoIncomingCallNotificationState.notified(repeatDecision.notificationId)
+                }
+                try {
+                    notificationPublisherFactory.get().publishNotification(
+                        repeatDecision.notificationToPublish,
+                        repeatDecision.notificationId
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to send incoming call notifications: " + e.message)
+                }
+            }
         }
-        try {
-            notificationPublisherFactory.get().publishNotification(
-                repeatDecision.notificationToPublish!!,
-                repeatDecision.notificationId!!
-            )
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to send incoming call notifications: " + e.message)
-        }
-
         scheduleNextIncomingCallNotification(autoIncomingCallNotificationState)
     }
 

@@ -4,9 +4,7 @@ import com.google.common.collect.ImmutableSet
 import com.mysticwind.linenotificationsupport.model.AutoIncomingCallNotificationState
 import com.mysticwind.linenotificationsupport.model.LineNotification
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,10 +29,9 @@ class IncomingCallNotificationRepeatPlannerTest {
             UPDATED_TIMESTAMP
         )
 
-        assertTrue(decision.shouldCancel)
-        assertEquals(ImmutableSet.of(100), decision.notificationIdsToCancel)
-        assertNull(decision.notificationToPublish)
-        assertNull(decision.notificationId)
+        assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Cancel)
+        val cancel = decision as IncomingCallNotificationRepeatPlanner.Decision.Cancel
+        assertEquals(ImmutableSet.of(100), cancel.notificationIdsToCancel)
     }
 
     @Test
@@ -52,12 +49,13 @@ class IncomingCallNotificationRepeatPlannerTest {
             UPDATED_TIMESTAMP
         )
 
-        assertFalse(decision.shouldCancel)
-        assertTrue(decision.notificationIdsToCancel.isEmpty())
-        assertEquals(200, decision.notificationId)
-        assertNotNull(decision.notificationToPublish)
-        assertEquals(UPDATED_TIMESTAMP, decision.notificationToPublish!!.timestamp)
-        assertEquals(ImmutableSet.of(100, 200), state.getIncomingCallNotificationIds())
+        assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
+        val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
+        assertEquals(200, repeat.notificationId)
+        assertNotNull(repeat.notificationToPublish)
+        assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
+        // notified() is the caller's responsibility — state still only has the initial id
+        assertEquals(ImmutableSet.of(100), state.getIncomingCallNotificationIds())
     }
 
     @Test
@@ -75,11 +73,11 @@ class IncomingCallNotificationRepeatPlannerTest {
             UPDATED_TIMESTAMP
         )
 
-        assertFalse(decision.shouldCancel)
-        assertTrue(decision.notificationIdsToCancel.isEmpty())
-        assertEquals(100, decision.notificationId)
-        assertNotNull(decision.notificationToPublish)
-        assertEquals(UPDATED_TIMESTAMP, decision.notificationToPublish!!.timestamp)
+        assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
+        val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
+        assertEquals(100, repeat.notificationId)
+        assertNotNull(repeat.notificationToPublish)
+        assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
         assertEquals(ImmutableSet.of(100), state.getIncomingCallNotificationIds())
     }
 

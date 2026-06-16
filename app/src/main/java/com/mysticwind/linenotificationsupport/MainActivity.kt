@@ -12,15 +12,10 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.Person
 import androidx.core.graphics.drawable.IconCompat
-import androidx.preference.PreferenceManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.mysticwind.linenotificationsupport.model.LineNotification
-import com.mysticwind.linenotificationsupport.notification.NotificationPublisher
 import com.mysticwind.linenotificationsupport.notification.NotificationPublisherFactory
-import com.mysticwind.linenotificationsupport.notification.NullNotificationPublisher
-import com.mysticwind.linenotificationsupport.preference.PreferenceProvider
-import com.mysticwind.linenotificationsupport.utils.GroupIdResolver
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.Instant
 import javax.inject.Inject
@@ -28,14 +23,16 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    private var notificationPublisher: NotificationPublisher = NullNotificationPublisher.INSTANCE
-
     @Inject
     lateinit var notificationPublisherFactory: NotificationPublisherFactory
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // This debug screen should be able to publish test notifications even when
+        // NotificationListenerService has not rebuilt the publisher in this process yet.
+        notificationPublisherFactory.notifyChange()
 
         val fab = findViewById<FloatingActionButton>(R.id.fab)
         fab.setOnClickListener { view ->
@@ -55,10 +52,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun randomNumber(): Int {
         return (Math.random() * 100 % 10).toInt()
-    }
-
-    private fun getPreferenceProvider(): PreferenceProvider {
-        return PreferenceProvider(PreferenceManager.getDefaultSharedPreferences(this))
     }
 
     private fun sendNotification(message: String, url: String?) {
@@ -130,9 +123,5 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-    }
-
-    companion object {
-        private val GROUP_ID_RESOLVER = GroupIdResolver(1)
     }
 }

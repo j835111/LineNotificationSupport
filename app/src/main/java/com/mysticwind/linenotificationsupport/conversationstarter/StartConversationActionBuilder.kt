@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableList
 import com.mysticwind.linenotificationsupport.R
 import com.mysticwind.linenotificationsupport.conversationstarter.broadcastreceiver.DisableStartConversationFeatureBroadcastReceiver
 import com.mysticwind.linenotificationsupport.conversationstarter.broadcastreceiver.StartConversationBroadcastReceiver
+import com.mysticwind.linenotificationsupport.reply.WearableReplyActionSemantics
 import com.mysticwind.linenotificationsupport.ui.LocalizationDao
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 @Singleton
 class StartConversationActionBuilder @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val localizationDao: LocalizationDao
+    private val localizationDao: LocalizationDao,
+    private val wearableReplyActionSemantics: WearableReplyActionSemantics
 ) {
     init {
         Objects.requireNonNull(context)
@@ -49,12 +51,14 @@ class StartConversationActionBuilder @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
-        return Notification.Action.Builder(
-            null,
-            localizationDao.getLocalizedString(R.string.conversation_start_notification_action_button),
-            replyPendingIntent
+        return wearableReplyActionSemantics.applyTo(
+            Notification.Action.Builder(
+                null,
+                localizationDao.getLocalizedString(R.string.conversation_start_notification_action_button),
+                replyPendingIntent
+            )
+                .addRemoteInput(remoteInput)
         )
-            .addRemoteInput(remoteInput)
             .build()
     }
 

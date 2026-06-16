@@ -21,6 +21,8 @@ import com.mysticwind.linenotificationsupport.model.LineNotification
 import com.mysticwind.linenotificationsupport.model.LineNotificationBuilder
 import com.mysticwind.linenotificationsupport.model.NotificationExtraConstants
 import com.mysticwind.linenotificationsupport.model.NotificationHistoryEntry
+import com.mysticwind.linenotificationsupport.notification.ConversationNotificationMetadata
+import com.mysticwind.linenotificationsupport.notification.WearableDismissalMetadata
 import com.mysticwind.linenotificationsupport.notificationgroup.NotificationGroupCreator
 import org.apache.commons.collections4.CollectionUtils
 import org.apache.commons.lang3.ArrayUtils
@@ -148,7 +150,7 @@ class MessageStyleImageSupportedNotificationPublisherAsyncTask(
 
         val channelId = createNotificationChannel()
 
-        val singleNotification = NotificationCompat.Builder(context, lineNotification.chatId ?: "")
+        val notificationBuilder = NotificationCompat.Builder(context, lineNotification.chatId ?: "")
             .setStyle(notificationStyle)
             .setContentTitle(lineNotification.title)
             .setContentText(lineNotification.message)
@@ -159,7 +161,13 @@ class MessageStyleImageSupportedNotificationPublisherAsyncTask(
             .setChannelId(channelId.orElse(null))
             .setAutoCancel(true)
             .setWhen(lineNotification.timestamp)
-            .build()
+
+        ConversationNotificationMetadata.applyToBuilder(context, notificationBuilder, lineNotification)
+        WearableDismissalMetadata.buildDismissalId(lineNotification)?.let { dismissalId ->
+            notificationBuilder.extend(NotificationCompat.WearableExtender().setDismissalId(dismissalId))
+        }
+
+        val singleNotification = notificationBuilder.build()
 
         addActionInNotification(singleNotification)
         if (lineNotification.messages.size > 1) {

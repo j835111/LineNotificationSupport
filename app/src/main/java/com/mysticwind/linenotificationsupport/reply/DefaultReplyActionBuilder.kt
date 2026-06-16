@@ -16,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class DefaultReplyActionBuilder @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val localizationDao: LocalizationDao
+    private val localizationDao: LocalizationDao,
+    private val wearableReplyActionSemantics: WearableReplyActionSemantics
 ) : ReplyActionBuilder {
 
     companion object {
@@ -47,8 +48,10 @@ class DefaultReplyActionBuilder @Inject constructor(
 
         val buttonLabel = localizationDao.getLocalizedString(R.string.conversation_notification_action_button)
 
-        return Notification.Action.Builder(null, buttonLabel, replyPendingIntent)
-            .addRemoteInput(remoteInput)
+        return wearableReplyActionSemantics.applyTo(
+            Notification.Action.Builder(null, buttonLabel, replyPendingIntent)
+                .addRemoteInput(remoteInput)
+        )
             .build()
     }
 

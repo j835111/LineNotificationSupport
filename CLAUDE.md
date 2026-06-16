@@ -16,7 +16,7 @@ Use JDK 17 locally; CI (`.github/workflows/android.yml`) targets that baseline.
 
 ## Architecture Overview
 
-This is a single-module Android app (Java, minSdk 26, compileSdk 35) that acts as a system `NotificationListenerService` for the LINE messaging app. The app intercepts LINE notifications, transforms them, and re-publishes them in a watch-friendly format.
+This is a single-module Android app (Java, minSdk 31, compileSdk 35) that acts as a system `NotificationListenerService` for the LINE messaging app. The app intercepts LINE notifications, transforms them, and re-publishes them in a watch-friendly format.
 
 ### Core Flow
 

@@ -26,6 +26,14 @@ class NotificationPublisherFactory @Inject constructor(
         return notificationPublisher
     }
 
+    @Synchronized
+    fun initializeIfNeeded(existingNotifications: List<StatusBarNotification> = Collections.emptyList()) {
+        if (notificationPublisher !== NullNotificationPublisher.INSTANCE) {
+            return
+        }
+        this.notificationPublisher = buildNotificationPublisherWithPreviousStateRestored(existingNotifications)
+    }
+
     fun notifyChange() {
         this.notificationPublisher = buildNotificationPublisherWithPreviousStateRestored(Collections.emptyList())
     }

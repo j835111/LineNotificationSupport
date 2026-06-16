@@ -2,6 +2,7 @@ package com.mysticwind.linenotificationsupport
 
 import android.app.UiAutomation
 import android.content.Intent
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
@@ -28,25 +29,36 @@ class MainActivityInstrumentedTest {
     fun tappingFabShowsSnackbarAndPostsTestNotification() {
         grantNotificationsPermission()
 
+        val uniqueSuffix = Instant.now().toEpochMilli().toString()
+        val notificationGroupKey = "message-group-$uniqueSuffix"
+        val notificationTitle = "Title-$uniqueSuffix"
+        val notificationMessagePrefix = "Smoke-$uniqueSuffix "
         val intent = Intent(
             InstrumentationRegistry.getInstrumentation().targetContext,
             MainActivity::class.java
-        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(MainActivity.EXTRA_TEST_NOTIFICATION_GROUP_KEY, notificationGroupKey)
+            putExtra(MainActivity.EXTRA_TEST_NOTIFICATION_TITLE, notificationTitle)
+            putExtra(MainActivity.EXTRA_TEST_NOTIFICATION_MESSAGE_PREFIX, notificationMessagePrefix)
+        }
         InstrumentationRegistry.getInstrumentation().startActivitySync(intent)
 
         onView(withId(R.id.fab)).perform(click())
 
         onView(withText("Replace with your own action")).check(matches(isDisplayed()))
 
-        assertTrue(waitForNotificationRecord("g:message-group", Duration.ofSeconds(5)))
-        assertTrue(waitForNotificationRecord("android.conversationTitle=String (Title)", Duration.ofSeconds(5)))
-        assertTrue(waitForNotificationRecord("android.text=String (Message:", Duration.ofSeconds(5)))
-        assertTrue(waitForNotificationRecord("dismissalId=line-dismissal-chat-message-group", Duration.ofSeconds(5)))
-        assertTrue(waitForNotificationRecord("shortcut=line-conversation-chat-message-group", Duration.ofSeconds(5)))
+        assertTrue(waitForNotificationRecord("g:$notificationGroupKey", Duration.ofSeconds(5)))
+        assertTrue(waitForNotificationRecord("android.conversationTitle=String ($notificationTitle)", Duration.ofSeconds(5)))
+        assertTrue(waitForNotificationRecord("android.text=String ($notificationMessagePrefix", Duration.ofSeconds(5)))
+        assertTrue(waitForNotificationRecord("dismissalId=line-dismissal-chat-$notificationGroupKey", Duration.ofSeconds(5)))
+        assertTrue(waitForNotificationRecord("shortcut=line-conversation-chat-$notificationGroupKey", Duration.ofSeconds(5)))
     }
 
     private fun grantNotificationsPermission() {
-        executeShellCommand("pm grant com.mysticwind.linenotificationsupport android.permission.POST_NOTIFICATIONS")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            executeShellCommand("pm grant com.mysticwind.linenotificationsupport android.permission.POST_NOTIFICATIONS")
+        }
     }
 
     private fun waitForNotificationRecord(marker: String, timeout: Duration): Boolean {

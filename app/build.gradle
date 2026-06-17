@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId "com.mysticwind.linenotificationsupport"
-        minSdkVersion 26
+        minSdkVersion 31
         targetSdkVersion 35
         versionCode 23
         versionName "1.12.4"
@@ -27,11 +27,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
     testOptions {
         unitTests.all {
@@ -113,5 +113,6 @@ dependencies {
     // Optional -- Mockito framework
     testImplementation 'org.mockito:mockito-core:5.2.0'
     testImplementation 'org.mockito:mockito-inline:5.2.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.2.1'
 
 }

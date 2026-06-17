@@ -19,6 +19,20 @@ object LineLauncher {
 
     @JvmStatic
     fun buildPendingIntent(context: Context, chatId: String?): PendingIntent {
+        return PendingIntent.getActivity(
+            context,
+            0,
+            buildIntentInternal(chatId, true),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    @JvmStatic
+    fun buildIntent(chatId: String?): Intent {
+        return buildIntentInternal(chatId, false)
+    }
+
+    private fun buildIntentInternal(chatId: String?, uniqueAction: Boolean): Intent {
         val intent: Intent
         if (isChatId(chatId)) {
             // Credit for launching LINE specific chat: https://www.dcard.tw/f/3c/p/227637855/b/78
@@ -29,19 +43,17 @@ object LineLauncher {
             )
             intent.putExtra("shortcutType", "chatmid")
             intent.putExtra("shortcutTargetId", chatId)
-            // https://stackoverflow.com/questions/3168484/pendingintent-works-correctly-for-the-first-notification-but-incorrectly-for-the
-            intent.action = chatId + Instant.now()
+            intent.action = if (uniqueAction) {
+                // https://stackoverflow.com/questions/3168484/pendingintent-works-correctly-for-the-first-notification-but-incorrectly-for-the
+                chatId + Instant.now()
+            } else {
+                chatId
+            }
         } else {
             intent = Intent(Intent.ACTION_VIEW)
             intent.data = Uri.parse("https://line.me/R/nv/chat")
         }
-
-        return PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        return intent
     }
 
     private fun isChatId(chatId: String?): Boolean {

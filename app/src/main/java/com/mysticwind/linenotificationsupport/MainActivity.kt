@@ -1,6 +1,7 @@
 package com.mysticwind.linenotificationsupport
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.RemoteInput
 import android.content.Intent
@@ -12,15 +13,10 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.Person
 import androidx.core.graphics.drawable.IconCompat
-import androidx.preference.PreferenceManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.mysticwind.linenotificationsupport.model.LineNotification
-import com.mysticwind.linenotificationsupport.notification.NotificationPublisher
 import com.mysticwind.linenotificationsupport.notification.NotificationPublisherFactory
-import com.mysticwind.linenotificationsupport.notification.NullNotificationPublisher
-import com.mysticwind.linenotificationsupport.preference.PreferenceProvider
-import com.mysticwind.linenotificationsupport.utils.GroupIdResolver
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.Instant
 import javax.inject.Inject
@@ -28,7 +24,15 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    private var notificationPublisher: NotificationPublisher = NullNotificationPublisher.INSTANCE
+    companion object {
+        private const val DEFAULT_NOTIFICATION_GROUP_KEY = "message-group"
+        private const val DEFAULT_NOTIFICATION_TITLE = "Title"
+        private const val DEFAULT_NOTIFICATION_MESSAGE_PREFIX = "Message: "
+
+        const val EXTRA_TEST_NOTIFICATION_GROUP_KEY = "test_notification_group_key"
+        const val EXTRA_TEST_NOTIFICATION_TITLE = "test_notification_title"
+        const val EXTRA_TEST_NOTIFICATION_MESSAGE_PREFIX = "test_notification_message_prefix"
+    }
 
     @Inject
     lateinit var notificationPublisherFactory: NotificationPublisherFactory
@@ -37,11 +41,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // This debug screen should be able to publish test notifications even when
+        // NotificationListenerService has not rebuilt the publisher in this process yet.
+        notificationPublisherFactory.initializeIfNeeded(
+            getSystemService(NotificationManager::class.java)?.activeNotifications?.toList() ?: emptyList()
+        )
+
         val fab = findViewById<FloatingActionButton>(R.id.fab)
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show()
-            sendNotification("Message: " + Instant.now().toString() + " https://www.google.com/search?q=" + randomNumber(), null)
+            sendNotification(buildMessage(), null)
         }
 
         fab.setOnLongClickListener {
@@ -57,12 +67,17 @@ class MainActivity : AppCompatActivity() {
         return (Math.random() * 100 % 10).toInt()
     }
 
-    private fun getPreferenceProvider(): PreferenceProvider {
-        return PreferenceProvider(PreferenceManager.getDefaultSharedPreferences(this))
+    private fun buildMessage(): String {
+        val prefix = intent.getStringExtra(EXTRA_TEST_NOTIFICATION_MESSAGE_PREFIX)
+            ?: DEFAULT_NOTIFICATION_MESSAGE_PREFIX
+        return prefix + Instant.now().toString() + " https://www.google.com/search?q=" + randomNumber()
     }
 
     private fun sendNotification(message: String, url: String?) {
-        val groupKey = "message-group"
+        val groupKey = intent.getStringExtra(EXTRA_TEST_NOTIFICATION_GROUP_KEY)
+            ?: DEFAULT_NOTIFICATION_GROUP_KEY
+        val title = intent.getStringExtra(EXTRA_TEST_NOTIFICATION_TITLE)
+            ?: DEFAULT_NOTIFICATION_TITLE
         val notificationId = (System.currentTimeMillis() / 1000).toInt()
 
         val sender = Person.Builder()
@@ -72,7 +87,7 @@ class MainActivity : AppCompatActivity() {
 
         val timestamp = Instant.now().toEpochMilli()
         val lineNotification = LineNotification.builder()
-            .title("Title")
+            .title(title)
             .message(message)
             .lineStickerUrl(url)
             .chatId(groupKey)
@@ -130,9 +145,5 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-    }
-
-    companion object {
-        private val GROUP_ID_RESOLVER = GroupIdResolver(1)
     }
 }

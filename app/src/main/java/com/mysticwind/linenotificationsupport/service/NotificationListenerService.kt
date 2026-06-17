@@ -32,6 +32,9 @@ import com.mysticwind.linenotificationsupport.model.IdenticalMessageHandlingStra
 import com.mysticwind.linenotificationsupport.model.LineNotification
 import com.mysticwind.linenotificationsupport.model.LineNotificationBuilder
 import com.mysticwind.linenotificationsupport.notification.NotificationPublisherFactory
+import com.mysticwind.linenotificationsupport.notification.CallNotificationActionOrderAdjuster
+import com.mysticwind.linenotificationsupport.notification.IncomingCallNotificationRepeatPlanner
+import com.mysticwind.linenotificationsupport.notification.PublishedCallNotificationStateUpdater
 import com.mysticwind.linenotificationsupport.notification.impl.DefaultAndroidNotificationManager
 import com.mysticwind.linenotificationsupport.notification.impl.DumbNotificationCounter
 import com.mysticwind.linenotificationsupport.notification.reactor.DismissedNotificationReactor
@@ -284,46 +287,26 @@ class NotificationListenerService : android.service.notification.NotificationLis
     private fun sendNotification(lineNotification: LineNotification, notificationId: Int) {
         notificationPublisherFactory.get().publishNotification(lineNotification, notificationId)
 
-        if (lineNotification.callState == null) {
-            return
-        }
-
-        // deal with auto notifications for calls
-        if (lineNotification.callState == LineNotification.CallState.INCOMING) {
-            this.autoIncomingCallNotificationState?.cancel()
-            this.autoIncomingCallNotificationState = AutoIncomingCallNotificationState.builder()
-                .lineNotification(lineNotification)
-                .waitDurationInSeconds(getWaitDurationInSeconds())
-                .timeoutInSeconds(getAutoSendTimeoutInSecondsFromPreferences())
-                .build()
-            this.autoIncomingCallNotificationState!!.notified(notificationId)
-            sendIncomingCallNotification(this.autoIncomingCallNotificationState!!)
-        }
-
-        val autoIncomingCallNotificationState = this.autoIncomingCallNotificationState ?: return
-
-        when (lineNotification.callState) {
-            LineNotification.CallState.MISSED_CALL -> autoIncomingCallNotificationState.setMissedCall()
-            LineNotification.CallState.IN_A_CALL -> autoIncomingCallNotificationState.setAccepted()
-            else -> { /* no-op */ }
+        val callStateUpdate = PublishedCallNotificationStateUpdater.updateState(
+            this.autoIncomingCallNotificationState,
+            lineNotification,
+            notificationId,
+            getWaitDurationInSeconds(),
+            getAutoSendTimeoutInSecondsFromPreferences()
+        )
+        this.autoIncomingCallNotificationState = callStateUpdate.nextState
+        if (callStateUpdate.shouldSendImmediateRepeat) {
+            sendIncomingCallNotification(requireNotNull(callStateUpdate.nextState) {
+                "shouldSendImmediateRepeat is true but nextState is null"
+            })
         }
     }
 
     private fun adjustActionOrder(lineNotification: LineNotification): LineNotification {
-        if (!shouldReverseActionOrder(lineNotification)) {
-            return lineNotification
-        }
-        if (lineNotification.actions.size < 2) {
-            return lineNotification
-        }
-        val actions = ArrayList(lineNotification.actions)
-        val firstAction = actions[0]
-        actions.add(0, actions[1])
-        actions.add(1, firstAction)
-        return lineNotification.toBuilder()
-            .clearActions()
-            .actions(actions)
-            .build()
+        return CallNotificationActionOrderAdjuster.adjust(
+            lineNotification,
+            shouldReverseActionOrder(lineNotification)
+        )
     }
 
     private fun handleDuplicate(lineNotification: LineNotification, notificationId: Int): Optional<Pair<LineNotification, Int>> {
@@ -385,29 +368,32 @@ class NotificationListenerService : android.service.notification.NotificationLis
     }
 
     private fun sendIncomingCallNotification(autoIncomingCallNotificationState: AutoIncomingCallNotificationState) {
-        if (!autoIncomingCallNotificationState.shouldNotify()) {
-            cancelIncomingCallNotification(autoIncomingCallNotificationState.getIncomingCallNotificationIds())
-            return
-        }
-        try {
-            val lineNotificationWithUpdatedTimestamp =
-                autoIncomingCallNotificationState.lineNotification.toBuilder()
-                    // very interesting that the timestamp needs to be updated for the watch to vibrate
-                    .timestamp(Instant.now().toEpochMilli())
-                    .build()
-
-            val notificationId: Int
-            if (preferenceProvider.shouldCreateNewContinuousCallNotifications()) {
-                notificationId = notificationIdGenerator.getNextNotificationId()
-                autoIncomingCallNotificationState.notified(notificationId)
-            } else {
-                notificationId = autoIncomingCallNotificationState.getIncomingCallNotificationIds().iterator().next()
+        val shouldCreateNew = preferenceProvider.shouldCreateNewContinuousCallNotifications()
+        val repeatDecision = IncomingCallNotificationRepeatPlanner.planNextRepeat(
+            autoIncomingCallNotificationState,
+            shouldCreateNew,
+            notificationIdGenerator::getNextNotificationId,
+            Instant.now().toEpochMilli()
+        )
+        when (repeatDecision) {
+            is IncomingCallNotificationRepeatPlanner.Decision.Cancel -> {
+                cancelIncomingCallNotification(repeatDecision.notificationIdsToCancel)
+                return
             }
-            notificationPublisherFactory.get().publishNotification(lineNotificationWithUpdatedTimestamp, notificationId)
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to send incoming call notifications: " + e.message)
+            is IncomingCallNotificationRepeatPlanner.Decision.Repeat -> {
+                if (shouldCreateNew) {
+                    autoIncomingCallNotificationState.notified(repeatDecision.notificationId)
+                }
+                try {
+                    notificationPublisherFactory.get().publishNotification(
+                        repeatDecision.notificationToPublish,
+                        repeatDecision.notificationId
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to send incoming call notifications: " + e.message)
+                }
+            }
         }
-
         scheduleNextIncomingCallNotification(autoIncomingCallNotificationState)
     }
 

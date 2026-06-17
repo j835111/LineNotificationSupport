@@ -16,7 +16,7 @@ Use JDK 17 locally; CI (`.github/workflows/android.yml`) targets that baseline.
 
 ## Architecture Overview
 
-This is a single-module Android app (Java, minSdk 26, compileSdk 35) that acts as a system `NotificationListenerService` for the LINE messaging app. The app intercepts LINE notifications, transforms them, and re-publishes them in a watch-friendly format.
+This is a single-module Android app (Java, minSdk 31, compileSdk 35) that acts as a system `NotificationListenerService` for the LINE messaging app. The app intercepts LINE notifications, transforms them, and re-publishes them in a watch-friendly format.
 
 ### Core Flow
 
@@ -83,5 +83,13 @@ Hilt (`@AndroidEntryPoint`, `@Singleton`). DI wiring lives entirely in `module/`
 - **Java only** — no Kotlin in production code; annotation processors (`annotationProcessor`) not `kapt`
 - Lombok is used on several model/DTO classes; verify `@Builder`, `@Value`, `@Data` annotations before adding boilerplate
 - 4-space indentation; classes named by role: `*Activity`, `*BroadcastReceiver`, `*Dao`, `*Reactor`
-- Unit tests live mirror-side in `app/src/test/java/…` beside the touched package; JUnit 4 + Mockito
+- Unit tests live mirror-side in `app/src/test/java/…` beside the touched package; **JUnit 4 + Mockito, written in Kotlin** (`org.mockito.kotlin:mockito-kotlin:5.2.1`)
 - Notification access, reply actions, and broadcast receiver changes are regression-sensitive — run tests and describe manual verification in PRs
+
+### Test Conventions (Kotlin)
+
+- Use `org.mockito.kotlin` API: `any<T>()` (not `anyString()`/`anyInt()`), `argumentCaptor<T>()`, `captor.firstValue`
+- Companion object constants imported as `ClassName.Companion.CONSTANT`
+- Android classes unavailable in JVM tests — wrap with `mockConstruction(Intent::class.java)`
+- `mockito-inline` required for static mocking (`mockStatic`) and construction mocking (`mockConstruction`)
+- JVM target is 11 (matches mockito-kotlin compilation target)

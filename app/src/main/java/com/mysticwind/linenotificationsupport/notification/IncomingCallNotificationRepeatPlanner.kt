@@ -2,6 +2,7 @@ package com.mysticwind.linenotificationsupport.notification
 
 import com.mysticwind.linenotificationsupport.model.AutoIncomingCallNotificationState
 import com.mysticwind.linenotificationsupport.model.LineNotification
+import timber.log.Timber
 
 object IncomingCallNotificationRepeatPlanner {
 
@@ -34,12 +35,15 @@ object IncomingCallNotificationRepeatPlanner {
         } else {
             autoIncomingCallNotificationState.getIncomingCallNotificationIds().firstOrNull()
         }
+        if (!shouldCreateNewContinuousCallNotifications && existingNotificationId == null) {
+            Timber.w("Reuse continuous call notification requested without a tracked notification ID; falling back to a new notification ID.")
+        }
         val notificationId = existingNotificationId ?: nextNotificationId()
 
         return Decision.Repeat(
             lineNotificationWithUpdatedTimestamp,
             notificationId,
-            shouldTrackNotificationId = shouldCreateNewContinuousCallNotifications || existingNotificationId == null
+            shouldTrackNotificationId = existingNotificationId == null
         )
     }
 }

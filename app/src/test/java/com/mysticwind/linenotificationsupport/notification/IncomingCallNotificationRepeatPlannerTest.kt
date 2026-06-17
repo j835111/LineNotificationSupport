@@ -8,6 +8,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito.mockStatic
+import timber.log.Timber
 
 class IncomingCallNotificationRepeatPlannerTest {
 
@@ -91,20 +93,25 @@ class IncomingCallNotificationRepeatPlannerTest {
             .timeoutInSeconds(60)
             .build()
 
-        val decision = IncomingCallNotificationRepeatPlanner.planNextRepeat(
-            state,
-            false,
-            { 200 },
-            UPDATED_TIMESTAMP
-        )
+        mockStatic(Timber::class.java).use { timberMock ->
+            val decision = IncomingCallNotificationRepeatPlanner.planNextRepeat(
+                state,
+                false,
+                { 200 },
+                UPDATED_TIMESTAMP
+            )
 
-        assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
-        val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
-        assertEquals(200, repeat.notificationId)
-        assertTrue(repeat.shouldTrackNotificationId)
-        assertNotNull(repeat.notificationToPublish)
-        assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
-        assertTrue(state.getIncomingCallNotificationIds().isEmpty())
+            assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
+            val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
+            assertEquals(200, repeat.notificationId)
+            assertTrue(repeat.shouldTrackNotificationId)
+            assertNotNull(repeat.notificationToPublish)
+            assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
+            assertTrue(state.getIncomingCallNotificationIds().isEmpty())
+            timberMock.verify {
+                Timber.w("Reuse continuous call notification requested without a tracked notification ID; falling back to a new notification ID.")
+            }
+        }
     }
 
     private fun buildIncomingCallNotification(timestamp: Long): LineNotification {

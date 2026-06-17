@@ -1,10 +1,12 @@
 package com.mysticwind.linenotificationsupport.notification
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import androidx.core.app.Person
 import androidx.core.graphics.drawable.IconCompat
+import com.mysticwind.linenotificationsupport.line.Constants.LINE_PACKAGE_NAME
 import com.mysticwind.linenotificationsupport.model.LineNotification
 import com.mysticwind.linenotificationsupport.model.LineNotificationBuilder.Companion.DEFAULT_CHAT_ID
 import org.junit.Assert.assertEquals
@@ -22,12 +24,11 @@ import org.mockito.kotlin.whenever
 @RunWith(MockitoJUnitRunner::class)
 class ConversationNotificationMetadataTest {
 
-    companion object {
-        private const val APP_ICON_RES_ID = 123
-    }
-
     @Mock
     private lateinit var context: Context
+
+    @Mock
+    private lateinit var packageManager: PackageManager
 
     @Test
     fun buildShortcutId_prefersRealChatId() {
@@ -97,15 +98,18 @@ class ConversationNotificationMetadataTest {
     }
 
     @Test
-    fun buildShortcutIcon_fallsBackToApplicationIconWhenNotificationBitmapMissing() {
-        val applicationInfo = ApplicationInfo().apply { icon = APP_ICON_RES_ID }
+    fun buildShortcutIcon_fallsBackToLineApplicationIconWhenNotificationBitmapMissing() {
+        val lineIconBitmap = mock<Bitmap>()
+        val lineApplicationIcon = mock<BitmapDrawable>()
         val expectedIcon = mock<IconCompat>()
-        whenever(context.applicationInfo).thenReturn(applicationInfo)
+        whenever(lineApplicationIcon.bitmap).thenReturn(lineIconBitmap)
+        whenever(context.packageManager).thenReturn(packageManager)
+        whenever(packageManager.getApplicationIcon(LINE_PACKAGE_NAME)).thenReturn(lineApplicationIcon)
         val lineNotification = LineNotification.builder().build()
 
         mockStatic(IconCompat::class.java).use { iconCompatMock ->
             iconCompatMock.`when`<IconCompat> {
-                IconCompat.createWithResource(context, APP_ICON_RES_ID)
+                IconCompat.createWithBitmap(lineIconBitmap)
             }.thenReturn(expectedIcon)
 
             val shortcutIcon = ConversationNotificationMetadata.buildShortcutIcon(context, lineNotification)
@@ -115,8 +119,10 @@ class ConversationNotificationMetadataTest {
     }
 
     @Test
-    fun buildShortcutIcon_returnsNullWhenNeitherNotificationBitmapNorApplicationIconExists() {
-        whenever(context.applicationInfo).thenReturn(ApplicationInfo())
+    fun buildShortcutIcon_returnsNullWhenNotificationBitmapMissingAndLineIconUnavailable() {
+        whenever(context.packageManager).thenReturn(packageManager)
+        whenever(packageManager.getApplicationIcon(LINE_PACKAGE_NAME))
+            .thenThrow(PackageManager.NameNotFoundException())
 
         val shortcutIcon = ConversationNotificationMetadata.buildShortcutIcon(
             context,

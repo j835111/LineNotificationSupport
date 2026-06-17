@@ -1,11 +1,17 @@
 package com.mysticwind.linenotificationsupport.notification
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import androidx.core.app.NotificationCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.content.LocusIdCompat
 import androidx.core.graphics.drawable.IconCompat
+import com.mysticwind.linenotificationsupport.line.Constants.LINE_PACKAGE_NAME
 import com.mysticwind.linenotificationsupport.line.LineLauncher
 import com.mysticwind.linenotificationsupport.model.LineNotification
 import com.mysticwind.linenotificationsupport.model.LineNotificationBuilder
@@ -77,12 +83,29 @@ object ConversationNotificationMetadata {
         lineNotification: LineNotification
     ): IconCompat? {
         lineNotification.icon?.let { return IconCompat.createWithBitmap(it) }
-        val applicationIconResId = context.applicationInfo.icon
-        return if (applicationIconResId != 0) {
-            IconCompat.createWithResource(context, applicationIconResId)
-        } else {
+        val lineApplicationIcon = try {
+            context.packageManager.getApplicationIcon(LINE_PACKAGE_NAME)
+        } catch (e: PackageManager.NameNotFoundException) {
+            Timber.w(e, "LINE package icon not found for shortcut fallback: %s", LINE_PACKAGE_NAME)
             null
         }
+        return convertDrawableToBitmap(lineApplicationIcon)?.let { IconCompat.createWithBitmap(it) }
+    }
+
+    private fun convertDrawableToBitmap(drawable: Drawable?): Bitmap? {
+        drawable ?: return null
+        if (drawable is BitmapDrawable) {
+            drawable.bitmap?.let { return it }
+        }
+        val bitmap = if (drawable.intrinsicWidth <= 0 || drawable.intrinsicHeight <= 0) {
+            Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+        } else {
+            Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        }
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     private fun buildShortcutLongLabel(lineNotification: LineNotification): String {

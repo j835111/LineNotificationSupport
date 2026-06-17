@@ -7,7 +7,11 @@ object IncomingCallNotificationRepeatPlanner {
 
     sealed class Decision {
         data class Cancel(val notificationIdsToCancel: Set<Int>) : Decision()
-        data class Repeat(val notificationToPublish: LineNotification, val notificationId: Int) : Decision()
+        data class Repeat(
+            val notificationToPublish: LineNotification,
+            val notificationId: Int,
+            val shouldTrackNotificationId: Boolean
+        ) : Decision()
     }
 
     @JvmStatic
@@ -25,12 +29,17 @@ object IncomingCallNotificationRepeatPlanner {
             .timestamp(nowTimestampMillis)
             .build()
 
-        val notificationId = if (shouldCreateNewContinuousCallNotifications) {
-            nextNotificationId()
+        val existingNotificationId = if (shouldCreateNewContinuousCallNotifications) {
+            null
         } else {
-            autoIncomingCallNotificationState.getIncomingCallNotificationIds().iterator().next()
+            autoIncomingCallNotificationState.getIncomingCallNotificationIds().firstOrNull()
         }
+        val notificationId = existingNotificationId ?: nextNotificationId()
 
-        return Decision.Repeat(lineNotificationWithUpdatedTimestamp, notificationId)
+        return Decision.Repeat(
+            lineNotificationWithUpdatedTimestamp,
+            notificationId,
+            shouldTrackNotificationId = shouldCreateNewContinuousCallNotifications || existingNotificationId == null
+        )
     }
 }

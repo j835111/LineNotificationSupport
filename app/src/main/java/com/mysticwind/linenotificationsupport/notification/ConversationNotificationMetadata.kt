@@ -34,7 +34,7 @@ object ConversationNotificationMetadata {
             .setLocusId(locusId)
 
         lineNotification.sender?.let { shortcutBuilder.setPersons(arrayOf(it)) }
-        lineNotification.icon?.let { shortcutBuilder.setIcon(IconCompat.createWithBitmap(it)) }
+        buildShortcutIcon(context, lineNotification)?.let { shortcutBuilder.setIcon(it) }
 
         val shortcut = shortcutBuilder.build()
         try {
@@ -70,6 +70,19 @@ object ConversationNotificationMetadata {
             ?.takeIf { it.isNotBlank() }
             ?: lineNotification.sender?.name?.toString()?.takeIf { it.isNotBlank() }
             ?: DEFAULT_LABEL
+    }
+
+    internal fun buildShortcutIcon(
+        context: Context,
+        lineNotification: LineNotification
+    ): IconCompat? {
+        lineNotification.icon?.let { return IconCompat.createWithBitmap(it) }
+        val applicationIconResId = context.applicationInfo.icon
+        return if (applicationIconResId != 0) {
+            IconCompat.createWithResource(context, applicationIconResId)
+        } else {
+            null
+        }
     }
 
     private fun buildShortcutLongLabel(lineNotification: LineNotification): String {

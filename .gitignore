@@ -9,6 +9,7 @@ gen
 ### Android template
 # Gradle files
 .gradle/
+.gradle-home/
 .kotlin/
 build/
 

@@ -381,7 +381,7 @@ class NotificationListenerService : android.service.notification.NotificationLis
                 return
             }
             is IncomingCallNotificationRepeatPlanner.Decision.Repeat -> {
-                if (shouldCreateNew) {
+                if (repeatDecision.shouldTrackNotificationId) {
                     autoIncomingCallNotificationState.notified(repeatDecision.notificationId)
                 }
                 try {

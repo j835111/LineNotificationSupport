@@ -2,12 +2,17 @@ package com.mysticwind.linenotificationsupport.notification
 
 import com.mysticwind.linenotificationsupport.model.AutoIncomingCallNotificationState
 import com.mysticwind.linenotificationsupport.model.LineNotification
+import timber.log.Timber
 
 object IncomingCallNotificationRepeatPlanner {
 
     sealed class Decision {
         data class Cancel(val notificationIdsToCancel: Set<Int>) : Decision()
-        data class Repeat(val notificationToPublish: LineNotification, val notificationId: Int) : Decision()
+        data class Repeat(
+            val notificationToPublish: LineNotification,
+            val notificationId: Int,
+            val shouldTrackNotificationId: Boolean
+        ) : Decision()
     }
 
     @JvmStatic
@@ -25,12 +30,20 @@ object IncomingCallNotificationRepeatPlanner {
             .timestamp(nowTimestampMillis)
             .build()
 
-        val notificationId = if (shouldCreateNewContinuousCallNotifications) {
-            nextNotificationId()
+        val existingNotificationId = if (shouldCreateNewContinuousCallNotifications) {
+            null
         } else {
-            autoIncomingCallNotificationState.getIncomingCallNotificationIds().iterator().next()
+            autoIncomingCallNotificationState.getIncomingCallNotificationIds().firstOrNull()
         }
+        if (!shouldCreateNewContinuousCallNotifications && existingNotificationId == null) {
+            Timber.w("Reuse continuous call notification requested without a tracked notification ID; falling back to a new notification ID.")
+        }
+        val notificationId = existingNotificationId ?: nextNotificationId()
 
-        return Decision.Repeat(lineNotificationWithUpdatedTimestamp, notificationId)
+        return Decision.Repeat(
+            lineNotificationWithUpdatedTimestamp,
+            notificationId,
+            shouldTrackNotificationId = existingNotificationId == null
+        )
     }
 }

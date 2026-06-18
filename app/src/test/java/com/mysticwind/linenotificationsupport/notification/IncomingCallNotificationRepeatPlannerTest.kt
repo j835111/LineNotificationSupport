@@ -5,8 +5,11 @@ import com.mysticwind.linenotificationsupport.model.AutoIncomingCallNotification
 import com.mysticwind.linenotificationsupport.model.LineNotification
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito.mockStatic
+import timber.log.Timber
 
 class IncomingCallNotificationRepeatPlannerTest {
 
@@ -52,6 +55,7 @@ class IncomingCallNotificationRepeatPlannerTest {
         assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
         val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
         assertEquals(200, repeat.notificationId)
+        assertTrue(repeat.shouldTrackNotificationId)
         assertNotNull(repeat.notificationToPublish)
         assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
         // notified() is the caller's responsibility — state still only has the initial id
@@ -76,9 +80,38 @@ class IncomingCallNotificationRepeatPlannerTest {
         assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
         val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
         assertEquals(100, repeat.notificationId)
+        assertFalse(repeat.shouldTrackNotificationId)
         assertNotNull(repeat.notificationToPublish)
         assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
         assertEquals(ImmutableSet.of(100), state.getIncomingCallNotificationIds())
+    }
+
+    @Test
+    fun planNextRepeat_fallsBackToNewNotificationIdAndMarksItForTrackingWhenReuseModeHasNoIds() {
+        val state = AutoIncomingCallNotificationState.builder()
+            .lineNotification(buildIncomingCallNotification(10L))
+            .timeoutInSeconds(60)
+            .build()
+
+        mockStatic(Timber::class.java).use { timberMock ->
+            val decision = IncomingCallNotificationRepeatPlanner.planNextRepeat(
+                state,
+                false,
+                { 200 },
+                UPDATED_TIMESTAMP
+            )
+
+            assertTrue(decision is IncomingCallNotificationRepeatPlanner.Decision.Repeat)
+            val repeat = decision as IncomingCallNotificationRepeatPlanner.Decision.Repeat
+            assertEquals(200, repeat.notificationId)
+            assertTrue(repeat.shouldTrackNotificationId)
+            assertNotNull(repeat.notificationToPublish)
+            assertEquals(UPDATED_TIMESTAMP, repeat.notificationToPublish.timestamp)
+            assertTrue(state.getIncomingCallNotificationIds().isEmpty())
+            timberMock.verify {
+                Timber.w("Reuse continuous call notification requested without a tracked notification ID; falling back to a new notification ID.")
+            }
+        }
     }
 
     private fun buildIncomingCallNotification(timestamp: Long): LineNotification {
